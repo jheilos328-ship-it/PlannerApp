@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #f5f2ee;
+            --surface: #ffffff;
+            --border: #e2ddd8;
+            --text: #1a1714;
+            --muted: #9a9390;
+            --accent: #c0392b;
+            --note-bg: #faf9f7;
+            --shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 48px 24px;
+        }
+
+        header {
+            max-width: 680px;
+            margin: 0 auto 48px;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 20px;
+        }
+
+        header h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2.8rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p { color: var(--muted); font-size: 0.9rem; margin-top: 6px; font-weight: 300; }
+
+        .container { max-width: 680px; margin: 0 auto; }
+
+        .add-task-form { display: flex; gap: 10px; margin-bottom: 36px; }
+
+        .add-task-form input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            background: var(--surface);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .add-task-form input:focus { border-color: var(--text); }
+        .add-task-form input::placeholder { color: var(--muted); }
+
+        .btn-add {
+            padding: 12px 20px;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-add:hover { opacity: 0.8; }
+
+        #tasks-list { display: flex; flex-direction: column; gap: 16px; }
+
+        .task-card {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            animation: slideIn 0.25s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .task-header:hover { background: #faf9f7; }
+        .task-left { display: flex; align-items: center; gap: 10px; }
+        .task-toggle { color: var(--muted); font-size: 0.75rem; transition: transform 0.2s; }
+        .task-card.open .task-toggle { transform: rotate(90deg); }
+        .task-name { font-family: 'DM Serif Display', serif; font-size: 1.15rem; }
+        .task-right { display: flex; align-items: center; gap: 12px; }
+
+        .note-count {
+            font-size: 0.8rem;
+            color: var(--muted);
+            background: var(--note-bg);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 1rem;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .btn-delete:hover { color: var(--accent); }
+
+        .notes-section {
+            display: none;
+            border-top: 1.5px solid var(--border);
+            background: var(--note-bg);
+        }
+
+        .task-card.open .notes-section { display: block; }
+
+        .note-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px 10px 44px;
+            animation: slideIn 0.2s ease;
+        }
+
+        .note-item:hover { background: #f0ede9; }
+        .note-text { font-size: 0.9rem; color: #3a3633; font-weight: 300; }
+        .note-text::before { content: '—'; margin-right: 8px; color: var(--muted); }
+
+        .add-note-form {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .add-note-form input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            background: white;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .add-note-form input:focus { border-color: var(--text); }
+        .add-note-form input::placeholder { color: var(--muted); }
+
+        .btn-add-note {
+            padding: 8px 14px;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-add-note:hover { opacity: 0.8; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+        .empty-state p { font-size: 0.95rem; font-weight: 300; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--text);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Planner Project</h1>
+        <p>Your tasks and notes, all in one place.</p>
+    </header>
+
+    <div class="container">
+        <div class="add-task-form">
+            <input type="text" id="new-task-input" placeholder="Add a new task..." />
+            <button class="btn-add" onclick="addTask()">+ Add Task</button>
+        </div>
+        <div id="tasks-list">
+            <div class="empty-state"><p>No tasks yet. Add one above.</p></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API = 'http://127.0.0.1:5000';
+
+        // ── Load everything via GET /showall ───────────────────────
+        // returns: [{ subject_id, subject_name, notes: [{note_id, stuff}] }]
+        async function loadAll() {
+            try {
+                const res = await fetch(`${API}/showall`);
+                const data = await res.json();
+                renderTasks(data);
+            } catch (err) {
+                console.error('Could not connect to server:', err);
+            }
+        }
+
+        // ── Render ─────────────────────────────────────────────────
+        function renderTasks(data) {
+            const list = document.getElementById('tasks-list');
+            if (!data.length) {
+                list.innerHTML = '<div class="empty-state"><p>No tasks yet. Add one above.</p></div>';
+                return;
+            }
+
+            list.innerHTML = data.map(task => `
+                <div class="task-card" id="task-${task.subject_id}">
+                    <div class="task-header" onclick="toggleTask(${task.subject_id})">
+                        <div class="task-left">
+                            <span class="task-toggle">▶</span>
+                            <span class="task-name">${task.subject_name}</span>
+                        </div>
+                        <div class="task-right">
+                            <span class="note-count">${task.notes.length} note${task.notes.length !== 1 ? 's' : ''}</span>
+                            <button class="btn-delete" onclick="deleteTask(event, ${task.subject_id})">🗑</button>
+                        </div>
+                    </div>
+                    <div class="notes-section">
+                        <div class="notes-list">
+                            ${task.notes.map(note => `
+                                <div class="note-item" id="note-${note.note_id}">
+                                    <span class="note-text">${note.stuff}</span>
+                                    <button class="btn-delete" onclick="deleteNote(${note.note_id})">🗑</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="add-note-form">
+                            <input type="text" id="note-input-${task.subject_id}" placeholder="Add a note..."
+                                onkeydown="if(event.key==='Enter') addNote(${task.subject_id})" />
+                            <button class="btn-add-note" onclick="addNote(${task.subject_id})">+ Add</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleTask(id) {
+            document.getElementById(`task-${id}`).classList.toggle('open');
+        }
+
+        // ── Add Task → POST /addsubject { name } ───────────────────
+        async function addTask() {
+            const input = document.getElementById('new-task-input');
+            console.log('Adding task with name:', input.value);
+            const name = input.value.trim();
+            if (!name) return;
+
+            await fetch(`${API}/addsubject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+
+            input.value = '';
+            showToast('Task added');
+            loadAll();
+        }
+
+        document.getElementById('new-task-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        // ── Delete Task → DELETE /delete_subject { id } ────────────
+        async function deleteTask(e, id) {
+            e.stopPropagation();
+            await fetch(`${API}/delete_subject`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            showToast('Task deleted');
+            loadAll();
+        }
+
+        // ── Add Note → POST /addnote { subject_id, stuff } ─────────
+        async function addNote(subjectId) {
+            const input = document.getElementById(`note-input-${subjectId}`);
+            const stuff = input.value.trim();
+            if (!stuff) return;
+
+            await fetch(`${API}/addnote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject_id: subjectId, stuff })
+            });
+
+            input.value = '';
+            showToast('Note added');
+            loadAll();
+        }
+
+        // ── Delete Note → DELETE /delete_note { note_id } ──────────
+        async function deleteNote(noteId) {
+            await fetch(`${API}/delete_note`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note_id: noteId })
+            });
+            showToast('Note deleted');
+            loadAll();
+        }
+
+        // ── Toast ──────────────────────────────────────────────────
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        loadAll();
+    </script>
+
+</body>
+</html>

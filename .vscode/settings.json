@@ -1,0 +1,6 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "**/V3/v3schoolway2clean.db",
+    "**/V3/__pycache__/**"
+  ]
+}
