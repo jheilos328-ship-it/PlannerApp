@@ -1,0 +1,1 @@
+web: cd V4 && gunicorn --bind 0.0.0.0:$PORT serverway2clean:app

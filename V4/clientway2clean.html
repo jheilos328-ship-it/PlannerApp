@@ -1,0 +1,2719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Lato:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #1a1a1a;
+            --sidebar-bg: #111111;
+            --surface: #242424;
+            --border: #333333;
+            --text: #f0ece4;
+            --muted: #666666;
+            --accent: #c9a96e;
+            --accent-dim: rgba(201, 169, 110, 0.12);
+            --danger: #e05c5c;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        /* ── Sidebar ──────────────────────────────────────────────── */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 28px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 4px;
+            font-weight: 300;
+        }
+
+        .new-project-area {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .new-project-area input {
+            flex: 1;
+            padding: 8px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .new-project-area input:focus { border-color: var(--accent); }
+        .new-project-area input::placeholder { color: var(--muted); }
+
+        .btn-new-project {
+            padding: 8px 12px;
+            background: var(--accent);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-new-project:hover { opacity: 0.85; }
+
+        .projects-label {
+            padding: 12px 16px 6px;
+            font-size: 0.7rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+        }
+
+        .projects-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 8px 16px;
+        }
+
+        .projects-list::-webkit-scrollbar { width: 4px; }
+        .projects-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+        }
+
+        .project-item:hover { background: var(--surface); }
+
+        .project-item.active {
+            background: var(--accent-dim);
+            border-color: rgba(201, 169, 110, 0.25);
+        }
+
+        .project-item.active .project-name { color: var(--accent); }
+
+        .project-info {
+            display: flex;
+            flex: 1;
+            min-width: 0;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .project-name {
+            font-size: 0.88rem;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .project-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .btn-project-icon,
+        .btn-delete-project {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: all 0.15s;
+        }
+
+        .project-item:hover .btn-project-icon,
+        .project-item:hover .btn-delete-project { opacity: 1; }
+        .project-item.editing-project .btn-project-icon,
+        .project-item.editing-due .btn-project-icon,
+        .project-item.editing-project .btn-delete-project,
+        .project-item.editing-due .btn-delete-project { opacity: 1; }
+        .btn-project-icon:hover { color: var(--accent); }
+        .btn-delete-project:hover { color: var(--danger); }
+
+        .no-projects {
+            padding: 20px 12px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 300;
+            line-height: 1.5;
+        }
+
+        /* ── Main ──────────────────────────────────────────────────── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .main-header {
+            padding: 28px 36px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .main-header h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            font-weight: 400;
+        }
+
+        .add-subject-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-subject-area input {
+            padding: 9px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.88rem;
+            outline: none;
+            width: 220px;
+            transition: border-color 0.2s;
+        }
+
+        .add-subject-area input:focus { border-color: var(--accent); }
+        .add-subject-area input::placeholder { color: var(--muted); }
+
+        .btn-add-subject {
+            padding: 9px 16px;
+            background: var(--accent);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-add-subject:hover { opacity: 0.85; }
+
+        .main-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 36px;
+        }
+
+        .main-body::-webkit-scrollbar { width: 4px; }
+        .main-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ── No-project splash (hidden once a project is selected) ── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--muted);
+            text-align: center;
+            gap: 8px;
+        }
+
+        .empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .empty-state h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: #444; font-weight: 400; }
+        .empty-state p { font-size: 0.85rem; font-weight: 300; }
+
+        /* Inline "no subjects yet" — lives inside #subjects-list */
+        .no-subjects-msg {
+            font-size: 0.85rem;
+            color: var(--muted);
+            font-weight: 300;
+            padding: 8px 0;
+        }
+
+        .project-filter-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 14px;
+            padding: 14px 16px;
+        }
+
+        .filter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .filter-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .filter-count {
+            color: var(--muted);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .filter-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 7px;
+            margin-top: 8px;
+        }
+
+        .filter-label {
+            color: var(--muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-right: 2px;
+            text-transform: uppercase;
+        }
+
+        .filter-btn,
+        .filter-select,
+        .filter-search {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.75rem;
+            padding: 6px 9px;
+        }
+
+        .filter-btn {
+            cursor: pointer;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active,
+        .filter-select:focus,
+        .filter-search:focus {
+            border-color: var(--accent);
+            color: var(--accent);
+            outline: none;
+        }
+
+        .filter-search {
+            min-width: 180px;
+        }
+
+        .filter-advanced {
+            display: none;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
+            padding-top: 10px;
+        }
+
+        .project-filter-panel.advanced-open .filter-advanced {
+            display: block;
+        }
+
+        .filter-no-results {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 300;
+            padding: 8px 0;
+        }
+
+        /* ── Subject Cards ──────────────────────────────────────────── */
+        #subjects-list { display: flex; flex-direction: column; gap: 14px; }
+
+        .subject-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            animation: fadeIn 0.25s ease;
+            transition: border-color 0.2s;
+            min-width: 0;
+        }
+
+        .subject-card:hover { border-color: #444; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .subject-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .subject-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+        .item-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .subject-toggle {
+            color: var(--muted);
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+
+        .subject-card.open .subject-toggle { transform: rotate(90deg); }
+
+        .subject-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .subject-right { display: flex; align-items: center; gap: 10px; }
+
+        .note-count {
+            font-size: 0.75rem;
+            color: var(--muted);
+            background: rgba(255,255,255,0.05);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-icon,
+        .btn-delete {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 0.9rem;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.15s;
+            line-height: 1;
+        }
+
+        .btn-icon:hover { color: var(--accent); }
+        .btn-delete:hover { color: var(--danger); }
+
+        .row-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .due-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .due-overdue { background: #7f1d1d; }
+        .due-today { background: #dc2626; }
+        .due-tomorrow { background: #f97316; }
+        .due-soon { background: #22c55e; }
+        .due-week { background: #14b8a6; }
+        .due-later { background: #3b82f6; }
+
+        .due-label {
+            display: block;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 400;
+            line-height: 1.2;
+        }
+
+        .due-label:empty { display: none; }
+
+        .due-editor {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 8px;
+        }
+
+        .subject-card > .due-editor {
+            padding: 0 18px 12px 42px;
+        }
+
+        .note-item .due-editor {
+            padding: 4px 0 0;
+        }
+
+        .due-quick,
+        .due-save,
+        .due-clear,
+        .due-cancel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.72rem;
+            padding: 5px 8px;
+        }
+
+        .due-quick:hover,
+        .due-save:hover { border-color: var(--accent); color: var(--accent); }
+        .due-clear:hover,
+        .due-cancel:hover { border-color: var(--danger); color: var(--danger); }
+
+        .due-input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.75rem;
+            min-width: 138px;
+            padding: 4px 7px;
+        }
+
+        .due-weekday {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.72rem;
+            padding: 5px 8px;
+        }
+
+        .priority-badge {
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            font-size: 0.62rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 3px 6px;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: rgba(220, 38, 38, 0.16);
+            border-color: rgba(220, 38, 38, 0.45);
+            color: #fca5a5;
+        }
+
+        .priority-medium {
+            background: rgba(249, 115, 22, 0.14);
+            border-color: rgba(249, 115, 22, 0.42);
+            color: #fdba74;
+        }
+
+        .priority-low {
+            background: rgba(59, 130, 246, 0.13);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+        }
+
+        .priority-editor {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 8px;
+        }
+
+        .subject-card > .priority-editor {
+            padding: 0 18px 12px 42px;
+        }
+
+        .note-item .priority-editor {
+            padding: 4px 0 0;
+        }
+
+        .priority-choice,
+        .priority-clear,
+        .priority-cancel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.72rem;
+            padding: 5px 8px;
+        }
+
+        .priority-choice:hover { border-color: var(--accent); color: var(--accent); }
+        .priority-clear:hover,
+        .priority-cancel:hover { border-color: var(--danger); color: var(--danger); }
+
+        .edit-input {
+            width: 100%;
+            min-width: 0;
+            padding: 6px 9px;
+            background: var(--bg);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .subject-name-edit {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+        }
+
+        .notes-section {
+            display: none;
+            border-top: 1px solid var(--border);
+            background: rgba(0,0,0,0.15);
+        }
+
+        .subject-card.open .notes-section { display: block; }
+
+        .note-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 9px 18px 9px 42px;
+            transition: background 0.15s;
+        }
+
+        .note-content {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .note-item:hover { background: rgba(255,255,255,0.03); }
+
+        .note-text {
+            font-size: 0.85rem;
+            color: #aaa;
+            font-weight: 300;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .note-text::before { content: '—'; margin-right: 8px; color: var(--muted); }
+
+        .add-note-area {
+            display: flex;
+            gap: 8px;
+            padding: 10px 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .add-note-area input {
+            flex: 1;
+            padding: 7px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .add-note-area input:focus { border-color: var(--accent); }
+        .add-note-area input::placeholder { color: var(--muted); }
+
+        .btn-add-note {
+            padding: 7px 14px;
+            background: var(--surface);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-add-note:hover { background: var(--accent-dim); border-color: var(--accent); }
+
+        /* ── Toast ──────────────────────────────────────────────────── */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--accent);
+            color: #1a1a1a;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.25s;
+            pointer-events: none;
+        }
+
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 0;
+                height: auto;
+                max-height: 42vh;
+            }
+
+            .projects-list {
+                flex: 0 1 auto;
+                max-height: 24vh;
+            }
+
+            .main {
+                height: auto;
+                min-height: 58vh;
+            }
+
+            .main-header {
+                padding: 20px 20px 16px;
+                align-items: stretch;
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            .main-header h2 {
+                font-size: 1.35rem;
+            }
+
+            .add-subject-area,
+            .new-project-area {
+                flex-direction: column;
+            }
+
+            .add-subject-area input,
+            .btn-add-subject,
+            .new-project-area input,
+            .btn-new-project {
+                width: 100%;
+            }
+
+            .new-project-area input,
+            .add-subject-area input,
+            .add-note-area input {
+                font-size: 16px;
+            }
+
+            .add-subject-area input {
+                width: 100%;
+            }
+
+            .main-body {
+                padding: 16px 20px 24px;
+            }
+
+            .subject-header {
+                padding: 12px 14px;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .subject-left,
+            .subject-right {
+                gap: 8px;
+                min-width: 0;
+            }
+
+            .subject-right {
+                flex-shrink: 0;
+            }
+
+            .subject-name,
+            .project-name,
+            .note-count {
+                min-width: 0;
+            }
+
+            .note-item {
+                padding: 10px 14px 10px 30px;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .note-text {
+                flex: 1;
+                word-break: break-word;
+            }
+
+            .add-note-area {
+                flex-direction: column;
+                padding: 10px 14px;
+            }
+
+            .btn-add-note,
+            .add-note-area input {
+                width: 100%;
+            }
+
+            .toast {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .sidebar-header {
+                padding: 20px 16px 14px;
+            }
+
+            .projects-label {
+                padding: 10px 16px 6px;
+            }
+
+            .projects-list {
+                padding: 4px 6px 12px;
+            }
+
+            .project-item {
+                padding: 12px 10px;
+            }
+
+            .main-header {
+                padding: 16px;
+            }
+
+            .main-body {
+                padding: 14px 16px 20px;
+            }
+
+            .subject-header {
+                flex-direction: column;
+            }
+
+            .subject-right {
+                width: 100%;
+                justify-content: space-between;
+                min-width: 0;
+            }
+
+            .subject-name {
+                font-size: 0.95rem;
+            }
+
+            .note-item {
+                padding: 10px 12px 10px 22px;
+            }
+
+            .empty-state {
+                padding: 24px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Planner</h1>
+            <p>Your projects</p>
+        </div>
+        <div class="new-project-area">
+            <input type="text" id="new-project-input" placeholder="New project..." />
+            <button type="button" class="btn-new-project" id="btn-create-project">+</button>
+        </div>
+        <div class="projects-label">Projects</div>
+        <div class="projects-list" id="projects-list">
+            <div class="no-projects">No projects yet. Create one above.</div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="main-header">
+            <h2 id="project-title">Select a project</h2>
+            <div class="add-subject-area" id="add-subject-area" style="display:none;">
+                <input type="text" id="new-subject-input" placeholder="Add a subject..." />
+                <button type="button" class="btn-add-subject" id="btn-add-subject">+ Add Subject</button>
+            </div>
+        </div>
+
+        <!--
+            #main-body is NEVER replaced after page load.
+            #no-project-state is hidden (not removed) once a project is selected.
+            #subjects-list is appended once and only its children change after that.
+        -->
+        <div class="main-body" id="main-body">
+            <div class="empty-state" id="no-project-state">
+                <div class="icon">📋</div>
+                <h3>No project selected</h3>
+                <p>Create or select a project from the sidebar to get started.</p>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API = '';
+        let activeProjectId = null;
+        const ACTIVE_PROJECT_KEY = 'planner-active-project';
+        const OPEN_SUBJECTS_KEY = 'planner-open-subjects';
+        const PROJECT_FILTERS_KEY = 'planner-project-filters';
+
+        // ── Toast ─────────────────────────────────────────────────────
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // ── Escape helper ─────────────────────────────────────────────
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function parseLocalDate(dateString) {
+            if (!dateString) return null;
+            const [year, month, day] = dateString.split('-').map(Number);
+            if (!year || !month || !day) return null;
+            return new Date(year, month - 1, day);
+        }
+
+        function toDateString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function addDays(date, days) {
+            const next = new Date(date);
+            next.setDate(next.getDate() + days);
+            return next;
+        }
+
+        function getToday() {
+            const now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        }
+
+        function getNextWeekday(targetDay) {
+            const today = getToday();
+            const daysUntilTarget = (targetDay - today.getDay() + 7) % 7 || 7;
+            return addDays(today, daysUntilTarget);
+        }
+
+        function getQuickDueDate(option) {
+            const today = getToday();
+            if (option === 'today') return toDateString(today);
+            if (option === 'tomorrow') return toDateString(addDays(today, 1));
+            if (option === 'next-week') return toDateString(addDays(today, 7));
+            return '';
+        }
+
+        function getDueDisplay(dueDate) {
+            const due = parseLocalDate(dueDate);
+            if (!due) return null;
+
+            const today = getToday();
+            const diffDays = Math.round((due - today) / 86400000);
+            const weekday = due.toLocaleDateString(undefined, { weekday: 'long' });
+
+            if (diffDays < 0) {
+                const days = Math.abs(diffDays);
+                return {
+                    label: `Overdue by ${days} day${days !== 1 ? 's' : ''}`,
+                    className: 'due-overdue'
+                };
+            }
+            if (diffDays === 0) return { label: 'Due today', className: 'due-today' };
+            if (diffDays === 1) return { label: 'Due tomorrow', className: 'due-tomorrow' };
+            if (diffDays <= 6) return { label: `Due ${weekday}`, className: 'due-soon' };
+            if (diffDays <= 13) return { label: `Due in ${diffDays} days`, className: 'due-week' };
+
+            const options = due.getFullYear() === today.getFullYear()
+                ? { month: 'short', day: 'numeric' }
+                : { month: 'short', day: 'numeric', year: 'numeric' };
+            return {
+                label: `Due ${due.toLocaleDateString(undefined, options)}`,
+                className: 'due-later'
+            };
+        }
+
+        function getDueDotHtml(dueDate) {
+            const display = getDueDisplay(dueDate);
+            if (!display) return '';
+            return `<span class="due-dot ${display.className}" title="${escapeHtml(display.label)}"></span>`;
+        }
+
+        function getDueLabelHtml(dueDate, id) {
+            const display = getDueDisplay(dueDate);
+            const text = display ? escapeHtml(display.label) : '';
+            return `<span class="due-label" id="${id}">${text}</span>`;
+        }
+
+        function renderDueState(type, id, dueDate) {
+            const dueLabel = document.getElementById(`${type}-due-label-${id}`);
+            if (dueLabel) dueLabel.textContent = getDueDisplay(dueDate)?.label || '';
+
+            const actions = document.querySelector(`[data-due-actions="${type}-${id}"]`);
+            if (!actions) return;
+
+            const oldDot = actions.querySelector('.due-dot');
+            if (oldDot) oldDot.remove();
+
+            const display = getDueDisplay(dueDate);
+            if (display) {
+                const dot = document.createElement('span');
+                dot.className = `due-dot ${display.className}`;
+                dot.title = display.label;
+                actions.prepend(dot);
+            }
+        }
+
+        function getDueEditorHtml(type, id, currentDueDate) {
+            return `
+                <div class="due-editor" data-due-editor="${type}-${id}">
+                    <button type="button" class="due-quick" data-action="quick-due" data-due-option="today">Today</button>
+                    <button type="button" class="due-quick" data-action="quick-due" data-due-option="tomorrow">Tomorrow</button>
+                    <select class="due-weekday">
+                        <option value="">Next weekday</option>
+                        <option value="1">Next Monday</option>
+                        <option value="2">Next Tuesday</option>
+                        <option value="3">Next Wednesday</option>
+                        <option value="4">Next Thursday</option>
+                        <option value="5">Next Friday</option>
+                        <option value="6">Next Saturday</option>
+                        <option value="0">Next Sunday</option>
+                    </select>
+                    <button type="button" class="due-quick" data-action="quick-due" data-due-option="next-week">Next Week</button>
+                    <input type="date" class="due-input" value="${escapeHtml(currentDueDate || '')}" />
+                    <button type="button" class="due-save" data-action="save-due" data-due-type="${type}" data-due-id="${id}">✓</button>
+                    <button type="button" class="due-clear" data-action="clear-due" data-due-type="${type}" data-due-id="${id}">Clear</button>
+                    <button type="button" class="due-cancel" data-action="cancel-due" data-due-type="${type}" data-due-id="${id}">×</button>
+                </div>
+            `;
+        }
+
+        function getPriorityDisplay(priority) {
+            if (priority === 'high') return { label: 'High', shortLabel: 'H', className: 'priority-high' };
+            if (priority === 'medium') return { label: 'Medium', shortLabel: 'M', className: 'priority-medium' };
+            if (priority === 'low') return { label: 'Low', shortLabel: 'L', className: 'priority-low' };
+            return null;
+        }
+
+        function getPriorityBadgeHtml(priority) {
+            const display = getPriorityDisplay(priority);
+            if (!display) return '';
+            return `<span class="priority-badge ${display.className}" title="${display.label} priority">${display.shortLabel}</span>`;
+        }
+
+        function renderPriorityState(type, id, priority) {
+            const actions = document.querySelector(`[data-priority-actions="${type}-${id}"]`);
+            if (!actions) return;
+
+            const oldBadge = actions.querySelector('.priority-badge');
+            if (oldBadge) oldBadge.remove();
+
+            const display = getPriorityDisplay(priority);
+            if (display) {
+                const badge = document.createElement('span');
+                badge.className = `priority-badge ${display.className}`;
+                badge.title = `${display.label} priority`;
+                badge.textContent = display.shortLabel;
+
+                const dueDot = actions.querySelector('.due-dot');
+                if (dueDot) {
+                    dueDot.insertAdjacentElement('afterend', badge);
+                } else {
+                    actions.prepend(badge);
+                }
+            }
+        }
+
+        function getPriorityEditorHtml(type, id) {
+            return `
+                <div class="priority-editor" data-priority-editor="${type}-${id}">
+                    <button type="button" class="priority-choice" data-action="save-priority" data-priority-type="${type}" data-priority-id="${id}" data-priority-value="high">High</button>
+                    <button type="button" class="priority-choice" data-action="save-priority" data-priority-type="${type}" data-priority-id="${id}" data-priority-value="medium">Medium</button>
+                    <button type="button" class="priority-choice" data-action="save-priority" data-priority-type="${type}" data-priority-id="${id}" data-priority-value="low">Low</button>
+                    <button type="button" class="priority-clear" data-action="clear-priority" data-priority-type="${type}" data-priority-id="${id}">Clear</button>
+                    <button type="button" class="priority-cancel" data-action="cancel-priority" data-priority-type="${type}" data-priority-id="${id}">×</button>
+                </div>
+            `;
+        }
+
+        function getDefaultProjectFilter() {
+            return {
+                panelOpen: false,
+                advancedOpen: false,
+                priority: 'all',
+                due: 'all',
+                dueDate: '',
+                search: ''
+            };
+        }
+
+        function getProjectFiltersMap() {
+            const raw = sessionStorage.getItem(PROJECT_FILTERS_KEY);
+            if (!raw) return {};
+
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (err) {
+                sessionStorage.removeItem(PROJECT_FILTERS_KEY);
+                return {};
+            }
+        }
+
+        function saveProjectFiltersMap(map) {
+            sessionStorage.setItem(PROJECT_FILTERS_KEY, JSON.stringify(map));
+        }
+
+        function getProjectFilter(projectId = activeProjectId) {
+            const defaults = getDefaultProjectFilter();
+            if (!projectId) return defaults;
+
+            const saved = getProjectFiltersMap()[String(projectId)] || {};
+            return { ...defaults, ...saved };
+        }
+
+        function saveProjectFilter(projectId, filter) {
+            if (!projectId) return;
+            const map = getProjectFiltersMap();
+            map[String(projectId)] = { ...getDefaultProjectFilter(), ...filter };
+            saveProjectFiltersMap(map);
+        }
+
+        function isProjectFilterActive(filter) {
+            return filter.priority !== 'all'
+                || filter.due !== 'all'
+                || Boolean(filter.search.trim());
+        }
+
+        function getFilterDueLabel(filter) {
+            if (filter.due === 'overdue') return 'Overdue';
+            if (filter.due === 'today') return 'Due today';
+            if (filter.due === 'tomorrow') return 'Due tomorrow';
+            if (filter.due === 'week') return 'This week';
+            if (filter.due === 'no-date') return 'No date';
+            if (filter.due === 'date' && filter.dueDate) {
+                return getDueDisplay(filter.dueDate)?.label || 'Selected day';
+            }
+            return 'All dates';
+        }
+
+        function getFilterSummary(filter) {
+            const parts = [];
+            if (filter.priority !== 'all') {
+                parts.push(filter.priority === 'none'
+                    ? 'No priority'
+                    : `${filter.priority.charAt(0).toUpperCase()}${filter.priority.slice(1)} priority`);
+            }
+            if (filter.due !== 'all') parts.push(getFilterDueLabel(filter));
+            if (filter.search.trim()) parts.push(`"${filter.search.trim()}"`);
+            return parts.length ? parts.join(' + ') : 'All notes';
+        }
+
+        function saveActiveProject(projectId, projectName) {
+            sessionStorage.setItem(ACTIVE_PROJECT_KEY, JSON.stringify({
+                projectId,
+                projectName
+            }));
+        }
+
+        function clearActiveProject() {
+            activeProjectId = null;
+            sessionStorage.removeItem(ACTIVE_PROJECT_KEY);
+        }
+
+        function getSavedActiveProject() {
+            const raw = sessionStorage.getItem(ACTIVE_PROJECT_KEY);
+            if (!raw) return null;
+
+            try {
+                return JSON.parse(raw);
+            } catch (err) {
+                sessionStorage.removeItem(ACTIVE_PROJECT_KEY);
+                return null;
+            }
+        }
+
+        function getOpenSubjectsMap() {
+            const raw = sessionStorage.getItem(OPEN_SUBJECTS_KEY);
+            if (!raw) return {};
+
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (err) {
+                sessionStorage.removeItem(OPEN_SUBJECTS_KEY);
+                return {};
+            }
+        }
+
+        function getOpenSubjectIds(projectId = activeProjectId) {
+            if (!projectId) return [];
+            const ids = getOpenSubjectsMap()[String(projectId)];
+            return Array.isArray(ids) ? ids : [];
+        }
+
+        function saveOpenSubjectIds(projectId, subjectIds) {
+            if (!projectId) return;
+            const map = getOpenSubjectsMap();
+            map[String(projectId)] = subjectIds;
+            sessionStorage.setItem(OPEN_SUBJECTS_KEY, JSON.stringify(map));
+        }
+
+        function toggleSavedSubject(projectId, subjectId) {
+            const subjectIds = getOpenSubjectIds(projectId);
+            const nextIds = subjectIds.includes(subjectId)
+                ? subjectIds.filter(id => id !== subjectId)
+                : [...subjectIds, subjectId];
+            saveOpenSubjectIds(projectId, nextIds);
+        }
+
+        function removeSavedSubject(projectId, subjectId) {
+            const nextIds = getOpenSubjectIds(projectId).filter(id => id !== subjectId);
+            saveOpenSubjectIds(projectId, nextIds);
+        }
+
+        function applyOpenSubjects(projectId = activeProjectId) {
+            getOpenSubjectIds(projectId).forEach(subjectId => {
+                const card = document.getElementById(`subject-${subjectId}`);
+                if (card) card.classList.add('open');
+            });
+        }
+
+        function ensureProjectViewVisible() {
+            const splash = document.getElementById('no-project-state');
+            if (splash) splash.style.display = 'none';
+
+            const list = getOrCreateSubjectsList();
+            syncNoSubjectsMsg(list);
+            return list;
+        }
+
+        function showNoProjectView() {
+            clearActiveProject();
+            document.getElementById('project-title').textContent = 'Select a project';
+            document.getElementById('add-subject-area').style.display = 'none';
+            document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active'));
+
+            const splash = document.getElementById('no-project-state');
+            if (splash) splash.style.display = 'flex';
+
+            const filterPanel = document.getElementById('project-filter-panel');
+            if (filterPanel) filterPanel.remove();
+
+            const list = document.getElementById('subjects-list');
+            if (list) list.replaceChildren();
+        }
+
+        // ── DOM helpers ───────────────────────────────────────────────
+
+        // Returns the persistent #subjects-list, creating it once if needed.
+        // The list is appended to #main-body and never removed.
+        function getOrCreateSubjectsList() {
+            let list = document.getElementById('subjects-list');
+            if (!list) {
+                list = document.createElement('div');
+                list.id = 'subjects-list';
+                document.getElementById('main-body').appendChild(list);
+            }
+            return list;
+        }
+
+        function getOrCreateProjectFilterPanel() {
+            let panel = document.getElementById('project-filter-panel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'project-filter-panel';
+                panel.className = 'project-filter-panel';
+
+                const list = getOrCreateSubjectsList();
+                document.getElementById('main-body').insertBefore(panel, list);
+            }
+            return panel;
+        }
+
+        // Keep the "no subjects" inline message in sync with card count.
+        // Only touches that one <p> element — nothing else.
+        function syncNoSubjectsMsg(list) {
+            const hasCards = list.querySelector('.subject-card') !== null;
+            let msg = list.querySelector('.no-subjects-msg');
+            if (!hasCards) {
+                if (!msg) {
+                    msg = document.createElement('p');
+                    msg.className = 'no-subjects-msg';
+                    msg.textContent = 'No subjects yet. Add one above.';
+                    list.appendChild(msg);
+                }
+            } else {
+                if (msg) msg.remove();
+            }
+        }
+
+        function getProjectFilterPanelHtml(projectId, projectName, filter, matchCount = 0) {
+            const active = isProjectFilterActive(filter);
+            const escapedProjectName = escapeHtml(projectName);
+            const summary = escapeHtml(getFilterSummary(filter));
+            const weekdayValue = filter.due === 'date' && filter.dueDate
+                ? String(parseLocalDate(filter.dueDate)?.getDay() ?? '')
+                : '';
+
+            return `
+                <div class="filter-header">
+                    <div>
+                        <div class="filter-title">Filter for ${escapedProjectName}</div>
+                        <div class="due-label" id="filter-summary-${projectId}">Filter: ${summary}</div>
+                    </div>
+                    <div class="filter-header-actions">
+                        <span class="filter-count" id="filter-count-${projectId}">
+                            ${active ? `${matchCount} matching note${matchCount !== 1 ? 's' : ''}` : 'All notes'}
+                        </span>
+                        <button type="button" class="filter-btn" data-action="close-project-filter">Close</button>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <button type="button" class="filter-btn ${!active ? 'active' : ''}" data-action="filter-quick" data-filter-type="all">All</button>
+                    <button type="button" class="filter-btn ${filter.due === 'overdue' ? 'active' : ''}" data-action="filter-quick" data-filter-type="overdue">Overdue</button>
+                    <button type="button" class="filter-btn ${filter.due === 'today' ? 'active' : ''}" data-action="filter-quick" data-filter-type="today">Today</button>
+                    <button type="button" class="filter-btn ${filter.due === 'tomorrow' ? 'active' : ''}" data-action="filter-quick" data-filter-type="tomorrow">Tomorrow</button>
+                    <button type="button" class="filter-btn ${filter.due === 'week' ? 'active' : ''}" data-action="filter-quick" data-filter-type="week">This Week</button>
+                    <button type="button" class="filter-btn ${filter.priority === 'high' ? 'active' : ''}" data-action="filter-quick" data-filter-type="high">High Priority</button>
+                    <button type="button" class="filter-btn ${filter.due === 'no-date' ? 'active' : ''}" data-action="filter-quick" data-filter-type="no-date">No Date</button>
+                    <button type="button" class="filter-btn" data-action="toggle-filter-advanced">
+                        Advanced ${filter.advancedOpen ? '▴' : '▾'}
+                    </button>
+                </div>
+                <div class="filter-advanced">
+                    <div class="filter-row">
+                        <span class="filter-label">Priority</span>
+                        <button type="button" class="filter-btn ${filter.priority === 'all' ? 'active' : ''}" data-action="filter-priority" data-filter-priority="all">All</button>
+                        <button type="button" class="filter-btn ${filter.priority === 'high' ? 'active' : ''}" data-action="filter-priority" data-filter-priority="high">High</button>
+                        <button type="button" class="filter-btn ${filter.priority === 'medium' ? 'active' : ''}" data-action="filter-priority" data-filter-priority="medium">Medium</button>
+                        <button type="button" class="filter-btn ${filter.priority === 'low' ? 'active' : ''}" data-action="filter-priority" data-filter-priority="low">Low</button>
+                        <button type="button" class="filter-btn ${filter.priority === 'none' ? 'active' : ''}" data-action="filter-priority" data-filter-priority="none">No Priority</button>
+                    </div>
+                    <div class="filter-row">
+                        <span class="filter-label">Due</span>
+                        <button type="button" class="filter-btn ${filter.due === 'all' ? 'active' : ''}" data-action="filter-due" data-filter-due="all">All</button>
+                        <button type="button" class="filter-btn ${filter.due === 'overdue' ? 'active' : ''}" data-action="filter-due" data-filter-due="overdue">Overdue</button>
+                        <button type="button" class="filter-btn ${filter.due === 'today' ? 'active' : ''}" data-action="filter-due" data-filter-due="today">Today</button>
+                        <button type="button" class="filter-btn ${filter.due === 'tomorrow' ? 'active' : ''}" data-action="filter-due" data-filter-due="tomorrow">Tomorrow</button>
+                        <select class="filter-select" id="filter-weekday-select">
+                            <option value="">Next weekday</option>
+                            <option value="1" ${weekdayValue === '1' ? 'selected' : ''}>Next Monday</option>
+                            <option value="2" ${weekdayValue === '2' ? 'selected' : ''}>Next Tuesday</option>
+                            <option value="3" ${weekdayValue === '3' ? 'selected' : ''}>Next Wednesday</option>
+                            <option value="4" ${weekdayValue === '4' ? 'selected' : ''}>Next Thursday</option>
+                            <option value="5" ${weekdayValue === '5' ? 'selected' : ''}>Next Friday</option>
+                            <option value="6" ${weekdayValue === '6' ? 'selected' : ''}>Next Saturday</option>
+                            <option value="0" ${weekdayValue === '0' ? 'selected' : ''}>Next Sunday</option>
+                        </select>
+                        <button type="button" class="filter-btn ${filter.due === 'week' ? 'active' : ''}" data-action="filter-due" data-filter-due="week">This Week</button>
+                        <button type="button" class="filter-btn ${filter.due === 'no-date' ? 'active' : ''}" data-action="filter-due" data-filter-due="no-date">No Date</button>
+                    </div>
+                    <div class="filter-row">
+                        <span class="filter-label">Text</span>
+                        <input type="search" class="filter-search" id="filter-search-input"
+                            placeholder="Search notes..."
+                            value="${escapeHtml(filter.search)}" />
+                        <button type="button" class="filter-btn" data-action="clear-project-filter">Clear filters</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProjectFilterPanel(projectId = activeProjectId) {
+            if (!projectId) return;
+
+            const filter = getProjectFilter(projectId);
+            const projectEl = document.getElementById(`proj-${projectId}`);
+            const projectName = projectEl ? projectEl.dataset.projectName : 'this project';
+            const active = isProjectFilterActive(filter);
+
+            if (!filter.panelOpen && !active) {
+                const panel = document.getElementById('project-filter-panel');
+                if (panel) panel.remove();
+                return;
+            }
+
+            const panel = getOrCreateProjectFilterPanel();
+            panel.className = `project-filter-panel${filter.advancedOpen ? ' advanced-open' : ''}`;
+            panel.dataset.projectId = projectId;
+            panel.innerHTML = getProjectFilterPanelHtml(projectId, projectName, filter, getCurrentFilterMatchCount(filter));
+        }
+
+        function getDueDiffDays(dueDate) {
+            const due = parseLocalDate(dueDate);
+            if (!due) return null;
+            return Math.round((due - getToday()) / 86400000);
+        }
+
+        function noteMatchesDueFilter(noteDueDate, filter) {
+            if (filter.due === 'all') return true;
+            if (filter.due === 'no-date') return !noteDueDate;
+
+            const diffDays = getDueDiffDays(noteDueDate);
+            if (diffDays === null) return false;
+
+            if (filter.due === 'overdue') return diffDays < 0;
+            if (filter.due === 'today') return diffDays === 0;
+            if (filter.due === 'tomorrow') return diffDays === 1;
+            if (filter.due === 'week') return diffDays >= 0 && diffDays <= 7;
+            if (filter.due === 'date') return noteDueDate === filter.dueDate;
+            return true;
+        }
+
+        function noteMatchesProjectFilter(noteEl, filter) {
+            const notePriority = noteEl.dataset.priority || '';
+            const noteDueDate = noteEl.dataset.dueDate || '';
+            const noteText = noteEl.dataset.noteText || '';
+            const search = filter.search.trim().toLowerCase();
+
+            if (filter.priority === 'none' && notePriority) return false;
+            if (filter.priority !== 'all' && filter.priority !== 'none' && notePriority !== filter.priority) return false;
+            if (!noteMatchesDueFilter(noteDueDate, filter)) return false;
+            if (search && !noteText.includes(search)) return false;
+
+            return true;
+        }
+
+        function getCurrentFilterMatchCount(filter) {
+            if (!isProjectFilterActive(filter)) {
+                return document.querySelectorAll('#subjects-list .note-item').length;
+            }
+
+            return Array.from(document.querySelectorAll('#subjects-list .note-item'))
+                .filter(noteEl => noteMatchesProjectFilter(noteEl, filter))
+                .length;
+        }
+
+        function updateFilterCount(projectId, matchCount, active) {
+            const countEl = document.getElementById(`filter-count-${projectId}`);
+            if (!countEl) return;
+            countEl.textContent = active
+                ? `${matchCount} matching note${matchCount !== 1 ? 's' : ''}`
+                : 'All notes';
+
+            const summaryEl = document.getElementById(`filter-summary-${projectId}`);
+            if (summaryEl) summaryEl.textContent = `Filter: ${getFilterSummary(getProjectFilter(projectId))}`;
+        }
+
+        function syncFilterNoResults(list, active, matchCount) {
+            let msg = list.querySelector('.filter-no-results');
+            if (active && matchCount === 0) {
+                if (!msg) {
+                    msg = document.createElement('p');
+                    msg.className = 'filter-no-results';
+                    msg.textContent = 'No notes match these filters.';
+                    list.appendChild(msg);
+                }
+            } else if (msg) {
+                msg.remove();
+            }
+        }
+
+        function applyProjectFilter(projectId = activeProjectId) {
+            if (!projectId) return;
+
+            const filter = getProjectFilter(projectId);
+            const active = isProjectFilterActive(filter);
+            const list = document.getElementById('subjects-list');
+            if (!list) return;
+
+            let matchCount = 0;
+
+            list.querySelectorAll('.subject-card').forEach(card => {
+                let subjectMatchCount = 0;
+
+                card.querySelectorAll('.note-item').forEach(noteEl => {
+                    const matches = !active || noteMatchesProjectFilter(noteEl, filter);
+                    noteEl.style.display = matches ? '' : 'none';
+                    if (matches) subjectMatchCount += 1;
+                });
+
+                if (active) {
+                    card.style.display = subjectMatchCount ? '' : 'none';
+                    if (subjectMatchCount) card.classList.add('open');
+                } else {
+                    card.style.display = '';
+                }
+
+                matchCount += subjectMatchCount;
+            });
+
+            syncFilterNoResults(list, active, matchCount);
+            updateFilterCount(projectId, matchCount, active);
+        }
+
+        function setProjectFilter(projectId, updates) {
+            const current = getProjectFilter(projectId);
+            const next = { ...current, ...updates };
+            saveProjectFilter(projectId, next);
+            renderProjectFilterPanel(projectId);
+            applyProjectFilter(projectId);
+        }
+
+        function clearProjectFilter(projectId = activeProjectId) {
+            setProjectFilter(projectId, {
+                priority: 'all',
+                due: 'all',
+                dueDate: '',
+                search: ''
+            });
+        }
+
+        async function openProjectFilter(projectId, projectName) {
+            const current = getProjectFilter(projectId);
+            saveProjectFilter(projectId, { ...current, panelOpen: true });
+            await selectProject(projectId, projectName);
+        }
+
+        // Build and return a single subject card DOM node.
+        // Called once per subject on initial load, then once per new subject added.
+        function buildSubjectCard(subject) {
+            const card = document.createElement('div');
+            card.className = 'subject-card';
+            card.id = `subject-${subject.subject_id}`;
+            card.dataset.subjectId = subject.subject_id;
+
+            const notesHTML = subject.notes.map(n => `
+                <div class="note-item" id="note-${n.note_id}"
+                    data-note-text="${escapeHtml(String(n.stuff).toLowerCase())}"
+                    data-due-date="${escapeHtml(n.due_date || '')}"
+                    data-priority="${escapeHtml(n.priority || '')}">
+                    <div class="note-content">
+                        <span class="note-text">${escapeHtml(n.stuff)}</span>
+                        ${getDueLabelHtml(n.due_date, `note-due-label-${n.note_id}`)}
+                    </div>
+                    <div class="row-actions" data-due-actions="note-${n.note_id}" data-priority-actions="note-${n.note_id}">
+                        ${getDueDotHtml(n.due_date)}
+                        ${getPriorityBadgeHtml(n.priority)}
+                        <button type="button" class="btn-icon"
+                            data-action="edit-note"
+                            data-note-id="${n.note_id}"
+                            data-subject-id="${subject.subject_id}">✎</button>
+                        <button type="button" class="btn-icon"
+                            data-action="edit-due"
+                            data-due-type="note"
+                            data-due-id="${n.note_id}"
+                            data-current-due="${escapeHtml(n.due_date || '')}">📅</button>
+                        <button type="button" class="btn-icon"
+                            data-action="edit-priority"
+                            data-priority-type="note"
+                            data-priority-id="${n.note_id}">⚑</button>
+                        <button type="button" class="btn-delete"
+                            data-action="delete-note"
+                            data-note-id="${n.note_id}"
+                            data-subject-id="${subject.subject_id}">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+
+            card.innerHTML = `
+                <div class="subject-header"
+                    data-action="toggle-subject"
+                    data-subject-id="${subject.subject_id}">
+                    <div class="subject-left">
+                        <span class="subject-toggle">▶</span>
+                        <div class="item-copy">
+                            <span class="subject-name">${escapeHtml(subject.subject_name)}</span>
+                            ${getDueLabelHtml(subject.due_date, `subject-due-label-${subject.subject_id}`)}
+                        </div>
+                    </div>
+                    <div class="subject-right">
+                        <span class="note-count" id="count-${subject.subject_id}">
+                            ${subject.notes.length} note${subject.notes.length !== 1 ? 's' : ''}
+                        </span>
+                        <div class="row-actions" data-due-actions="subject-${subject.subject_id}" data-priority-actions="subject-${subject.subject_id}">
+                            ${getDueDotHtml(subject.due_date)}
+                            ${getPriorityBadgeHtml(subject.priority)}
+                            <button type="button" class="btn-icon"
+                                data-action="edit-subject"
+                                data-subject-id="${subject.subject_id}">✎</button>
+                            <button type="button" class="btn-icon"
+                                data-action="edit-due"
+                                data-due-type="subject"
+                                data-due-id="${subject.subject_id}"
+                                data-current-due="${escapeHtml(subject.due_date || '')}">📅</button>
+                            <button type="button" class="btn-icon"
+                                data-action="edit-priority"
+                                data-priority-type="subject"
+                                data-priority-id="${subject.subject_id}">⚑</button>
+                            <button type="button" class="btn-delete"
+                                data-action="delete-subject"
+                                data-subject-id="${subject.subject_id}">🗑</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="notes-section">
+                    <div class="notes-list" id="notes-list-${subject.subject_id}">
+                        ${notesHTML}
+                    </div>
+                    <div class="add-note-area">
+                        <input type="text"
+                            id="note-input-${subject.subject_id}"
+                            placeholder="Add a note..."
+                            data-action="note-input"
+                            data-subject-id="${subject.subject_id}" />
+                        <button type="button" class="btn-add-note"
+                            data-action="add-note"
+                            data-subject-id="${subject.subject_id}">+ Add</button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        // ── Initial project render ─────────────────────────────────────
+        // Called once when a project is first selected (or when switching projects).
+        // Replaces only the subject cards inside #subjects-list — not the list itself,
+        // not #main-body, and not anything outside #subjects-list.
+        function renderSubjectsInitial(subjects) {
+            const list = getOrCreateSubjectsList();
+            list.replaceChildren();
+
+            subjects.forEach(s => list.appendChild(buildSubjectCard(s)));
+            syncNoSubjectsMsg(list);
+            applyOpenSubjects();
+        }
+
+        // ── Sidebar project list render (called once on init) ──────────
+        function renderProjects(projects) {
+            const list = document.getElementById('projects-list');
+            if (!projects.length) {
+                clearActiveProject();
+                list.innerHTML = '<div class="no-projects">No projects yet. Create one above.</div>';
+                return;
+            }
+            list.innerHTML = projects.map(p => `
+                <div class="project-item"
+                    id="proj-${p.project_id}"
+                    data-action="select-project"
+                    data-project-id="${p.project_id}"
+                    data-project-name="${p.project_name}">
+                    <div class="project-info">
+                        <span class="project-name">${escapeHtml(p.project_name)}</span>
+                        ${getDueLabelHtml(p.due_date, `project-due-label-${p.project_id}`)}
+                    </div>
+                    <div class="project-actions" data-due-actions="project-${p.project_id}" data-priority-actions="project-${p.project_id}">
+                        ${getDueDotHtml(p.due_date)}
+                        ${getPriorityBadgeHtml(p.priority)}
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-project"
+                            data-project-id="${p.project_id}">✎</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-due"
+                            data-due-type="project"
+                            data-due-id="${p.project_id}"
+                            data-current-due="${escapeHtml(p.due_date || '')}">📅</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-priority"
+                            data-priority-type="project"
+                            data-priority-id="${p.project_id}">⚑</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="project-filter"
+                            data-project-id="${p.project_id}"
+                            data-project-name="${escapeHtml(p.project_name)}">🔎</button>
+                        <button type="button" class="btn-delete-project"
+                            data-action="delete-project"
+                            data-project-id="${p.project_id}">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function selectProject(projectId, projectName) {
+            activeProjectId = projectId;
+            saveActiveProject(projectId, projectName);
+
+            document.getElementById('project-title').textContent = projectName;
+            document.getElementById('add-subject-area').style.display = 'flex';
+            document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active'));
+            ensureProjectViewVisible();
+
+            const projectEl = document.getElementById(`proj-${projectId}`);
+            if (projectEl) projectEl.classList.add('active');
+
+            await loadProject(projectId);
+        }
+
+        async function restoreActiveProject(projects) {
+            const saved = getSavedActiveProject();
+            if (!saved) return;
+
+            const match = projects.find(project => project.project_id === saved.projectId);
+            if (!match) {
+                clearActiveProject();
+                return;
+            }
+
+            await selectProject(match.project_id, match.project_name);
+        }
+
+        // ── API functions ──────────────────────────────────────────────
+
+        async function loadProjects() {
+            try {
+                const res = await fetch(`${API}/showallprojects`);
+                const data = await res.json();
+                renderProjects(data);
+                await restoreActiveProject(data);
+            } catch (err) {
+                console.error('loadProjects failed:', err);
+            }
+        }
+
+        // Create project → append one sidebar item, never re-render the list
+        async function createProject() {
+            try {
+                const input = document.getElementById('new-project-input');
+                const name = input.value.trim();
+                if (!name) return;
+
+                const res = await fetch(`${API}/createnewproject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                input.value = '';
+                showToast('Project created');
+
+                const list = document.getElementById('projects-list');
+                const placeholder = list.querySelector('.no-projects');
+                if (placeholder) placeholder.remove();
+
+                const item = document.createElement('div');
+                item.className = 'project-item';
+                item.id = `proj-${data.project_id}`;
+                item.dataset.action = 'select-project';
+                item.dataset.projectId = data.project_id;
+                item.dataset.projectName = data.name;
+                item.innerHTML = `
+                    <div class="project-info">
+                        <span class="project-name">${escapeHtml(data.name)}</span>
+                        ${getDueLabelHtml(null, `project-due-label-${data.project_id}`)}
+                    </div>
+                    <div class="project-actions" data-due-actions="project-${data.project_id}" data-priority-actions="project-${data.project_id}">
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-project"
+                            data-project-id="${data.project_id}">✎</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-due"
+                            data-due-type="project"
+                            data-due-id="${data.project_id}"
+                            data-current-due="">📅</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="edit-priority"
+                            data-priority-type="project"
+                            data-priority-id="${data.project_id}">⚑</button>
+                        <button type="button" class="btn-project-icon"
+                            data-action="project-filter"
+                            data-project-id="${data.project_id}"
+                            data-project-name="${escapeHtml(data.name)}">🔎</button>
+                        <button type="button" class="btn-delete-project"
+                            data-action="delete-project"
+                            data-project-id="${data.project_id}">🗑</button>
+                    </div>
+                `;
+                list.appendChild(item);
+                await selectProject(data.project_id, data.name);
+            } catch (err) {
+                console.error('createProject failed:', err);
+            }
+        }
+
+        function startProjectEdit(projectId) {
+            const item = document.getElementById(`proj-${projectId}`);
+            if (!item || item.classList.contains('editing-project')) return;
+
+            const nameEl = item.querySelector('.project-name');
+            if (!nameEl) return;
+
+            item.classList.add('editing-project');
+            const currentName = nameEl.textContent.trim();
+            nameEl.innerHTML = `
+                <input type="text"
+                    class="edit-input project-name-edit"
+                    value="${escapeHtml(currentName)}"
+                    data-edit-type="project"
+                    data-project-id="${projectId}" />
+            `;
+
+            const actions = item.querySelector('.project-actions');
+            actions.dataset.defaultHtml = actions.innerHTML;
+            actions.innerHTML = `
+                <button type="button" class="btn-project-icon"
+                    data-action="save-project"
+                    data-project-id="${projectId}">✓</button>
+                <button type="button" class="btn-delete-project"
+                    data-action="cancel-project-edit"
+                    data-project-id="${projectId}">×</button>
+            `;
+
+            const input = nameEl.querySelector('input');
+            input.focus();
+            input.select();
+        }
+
+        function cancelProjectEdit(projectId, name) {
+            const item = document.getElementById(`proj-${projectId}`);
+            if (!item) return;
+
+            const nameEl = item.querySelector('.project-name');
+            const input = nameEl ? nameEl.querySelector('input') : null;
+            const restoredName = name ?? (input ? input.defaultValue : '');
+            if (nameEl) nameEl.textContent = restoredName;
+
+            const actions = item.querySelector('.project-actions');
+            if (actions && actions.dataset.defaultHtml) {
+                actions.innerHTML = actions.dataset.defaultHtml;
+                delete actions.dataset.defaultHtml;
+            }
+            item.classList.remove('editing-project');
+        }
+
+        async function saveProjectEdit(projectId) {
+            try {
+                const item = document.getElementById(`proj-${projectId}`);
+                const input = item ? item.querySelector('.project-name-edit') : null;
+                if (!input) return;
+
+                const newName = input.value.trim();
+                if (!newName) return;
+
+                const res = await fetch(`${API}/updateproject`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_id: projectId, new_name: newName })
+                });
+                const data = await res.json();
+                if (data.message !== 'updated!') throw new Error('Project update failed');
+
+                cancelProjectEdit(projectId, newName);
+
+                const projectEl = document.getElementById(`proj-${projectId}`);
+                if (projectEl) projectEl.dataset.projectName = newName;
+
+                if (activeProjectId === projectId) {
+                    document.getElementById('project-title').textContent = newName;
+                    saveActiveProject(projectId, newName);
+                }
+
+                showToast('Project updated');
+            } catch (err) {
+                console.error('saveProjectEdit failed:', err);
+                showToast('Project update failed');
+            }
+        }
+
+        function getDueContainer(type, id) {
+            if (type === 'project') return document.getElementById(`proj-${id}`);
+            if (type === 'subject') return document.getElementById(`subject-${id}`);
+            if (type === 'note') return document.getElementById(`note-${id}`);
+            return null;
+        }
+
+        function getDuePayload(type, id, dueDate) {
+            if (type === 'project') {
+                return {
+                    path: '/updateprojectdate',
+                    body: { project_id: id, due_date: dueDate }
+                };
+            }
+            if (type === 'subject') {
+                return {
+                    path: '/updatesubjectdate',
+                    body: { id, due_date: dueDate }
+                };
+            }
+            return {
+                path: '/updatenotedate',
+                body: { note_id: id, due_date: dueDate }
+            };
+        }
+
+        function startDueEdit(type, id, currentDueDate = '') {
+            const container = getDueContainer(type, id);
+            if (!container || container.classList.contains('editing-due')) return;
+
+            container.classList.add('editing-due');
+            const editorHTML = getDueEditorHtml(type, id, currentDueDate);
+
+            if (type === 'subject') {
+                const notesSection = container.querySelector('.notes-section');
+                notesSection.insertAdjacentHTML('beforebegin', editorHTML);
+            } else {
+                container.insertAdjacentHTML('beforeend', editorHTML);
+            }
+
+            const input = container.querySelector(`[data-due-editor="${type}-${id}"] .due-input`);
+            if (input) input.focus();
+        }
+
+        function cancelDueEdit(type, id) {
+            const container = getDueContainer(type, id);
+            if (!container) return;
+
+            const editor = container.querySelector(`[data-due-editor="${type}-${id}"]`);
+            if (editor) editor.remove();
+            container.classList.remove('editing-due');
+        }
+
+        async function saveDueDate(type, id, dueDate) {
+            try {
+                const payload = getDuePayload(type, id, dueDate || null);
+                const res = await fetch(`${API}${payload.path}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload.body)
+                });
+                const data = await res.json();
+                if (data.message !== 'updated!') throw new Error('Due date update failed');
+
+                renderDueState(type, id, dueDate || null);
+
+                const container = getDueContainer(type, id);
+                if (container) container.dataset.dueDate = dueDate || '';
+
+                const actions = document.querySelector(`[data-due-actions="${type}-${id}"]`);
+                const calendarButton = actions ? actions.querySelector('[data-action="edit-due"]') : null;
+                if (calendarButton) calendarButton.dataset.currentDue = dueDate || '';
+
+                cancelDueEdit(type, id);
+                applyProjectFilter(activeProjectId);
+                showToast(dueDate ? 'Due date updated' : 'Due date cleared');
+            } catch (err) {
+                console.error('saveDueDate failed:', err);
+                showToast('Due date update failed');
+            }
+        }
+
+        function getPriorityPayload(type, id, priority) {
+            if (type === 'project') {
+                return {
+                    path: '/updateprojectpriority',
+                    body: { project_id: id, priority }
+                };
+            }
+            if (type === 'subject') {
+                return {
+                    path: '/updatesubjectpriority',
+                    body: { id, priority }
+                };
+            }
+            return {
+                path: '/updatenotepriority',
+                body: { note_id: id, priority }
+            };
+        }
+
+        function startPriorityEdit(type, id) {
+            const container = getDueContainer(type, id);
+            if (!container || container.classList.contains('editing-priority')) return;
+
+            container.classList.add('editing-priority');
+            const editorHTML = getPriorityEditorHtml(type, id);
+
+            if (type === 'subject') {
+                const notesSection = container.querySelector('.notes-section');
+                notesSection.insertAdjacentHTML('beforebegin', editorHTML);
+            } else {
+                container.insertAdjacentHTML('beforeend', editorHTML);
+            }
+        }
+
+        function cancelPriorityEdit(type, id) {
+            const container = getDueContainer(type, id);
+            if (!container) return;
+
+            const editor = container.querySelector(`[data-priority-editor="${type}-${id}"]`);
+            if (editor) editor.remove();
+            container.classList.remove('editing-priority');
+        }
+
+        async function savePriority(type, id, priority) {
+            try {
+                const payload = getPriorityPayload(type, id, priority || null);
+                const res = await fetch(`${API}${payload.path}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload.body)
+                });
+                const data = await res.json();
+                if (data.message !== 'updated!') throw new Error('Priority update failed');
+
+                renderPriorityState(type, id, priority || null);
+                const container = getDueContainer(type, id);
+                if (container) container.dataset.priority = priority || '';
+                cancelPriorityEdit(type, id);
+                applyProjectFilter(activeProjectId);
+                showToast(priority ? 'Priority updated' : 'Priority cleared');
+            } catch (err) {
+                console.error('savePriority failed:', err);
+                showToast('Priority update failed');
+            }
+        }
+
+        // Load project subjects on first select (or project switch)
+        async function loadProject(projectId) {
+            try {
+                ensureProjectViewVisible();
+                const res = await fetch(`${API}/getaproject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_id: projectId })
+                });
+                const data = await res.json();
+
+                renderSubjectsInitial(data);
+                renderProjectFilterPanel(projectId);
+                applyProjectFilter(projectId);
+            } catch (err) {
+                console.error('loadProject failed:', err);
+            }
+        }
+
+        // Add subject → append one card, touch nothing else
+        async function addSubject() {
+            try {
+                const input = document.getElementById('new-subject-input');
+                const name = input.value.trim();
+                if (!name || !activeProjectId) return;
+
+                const res = await fetch(`${API}/addsubject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, project_id: activeProjectId })
+                });
+                const data = await res.json();
+                input.value = '';
+                showToast('Subject added');
+
+                const list = getOrCreateSubjectsList();
+                const msg = list.querySelector('.no-subjects-msg');
+                if (msg) msg.remove();
+
+                list.appendChild(buildSubjectCard({
+                    subject_id: data.subject_id,
+                    subject_name: data.name,
+                    due_date: null,
+                    priority: null,
+                    notes: []
+                }));
+                applyProjectFilter(activeProjectId);
+            } catch (err) {
+                console.error('addSubject failed:', err);
+            }
+        }
+
+        function startSubjectEdit(subjectId) {
+            const card = document.getElementById(`subject-${subjectId}`);
+            if (!card || card.classList.contains('editing-subject')) return;
+
+            const nameEl = card.querySelector('.subject-name');
+            if (!nameEl) return;
+
+            card.classList.add('editing-subject');
+            const currentName = nameEl.textContent.trim();
+            nameEl.innerHTML = `
+                <input type="text"
+                    class="edit-input subject-name-edit"
+                    value="${escapeHtml(currentName)}"
+                    data-edit-type="subject"
+                    data-subject-id="${subjectId}" />
+            `;
+
+            const actions = card.querySelector('.subject-right .row-actions');
+            actions.dataset.defaultHtml = actions.innerHTML;
+            actions.innerHTML = `
+                <button type="button" class="btn-icon"
+                    data-action="save-subject"
+                    data-subject-id="${subjectId}">✓</button>
+                <button type="button" class="btn-delete"
+                    data-action="cancel-subject-edit"
+                    data-subject-id="${subjectId}">×</button>
+            `;
+
+            const input = nameEl.querySelector('input');
+            input.focus();
+            input.select();
+        }
+
+        function cancelSubjectEdit(subjectId, name) {
+            const card = document.getElementById(`subject-${subjectId}`);
+            if (!card) return;
+
+            const nameEl = card.querySelector('.subject-name');
+            const input = nameEl ? nameEl.querySelector('input') : null;
+            const restoredName = name ?? (input ? input.defaultValue : '');
+            if (nameEl) nameEl.textContent = restoredName;
+
+            const actions = card.querySelector('.subject-right .row-actions');
+            if (actions && actions.dataset.defaultHtml) {
+                actions.innerHTML = actions.dataset.defaultHtml;
+                delete actions.dataset.defaultHtml;
+            }
+            card.classList.remove('editing-subject');
+        }
+
+        async function saveSubjectEdit(subjectId) {
+            try {
+                const card = document.getElementById(`subject-${subjectId}`);
+                const input = card ? card.querySelector('.subject-name-edit') : null;
+                if (!input) return;
+
+                const newName = input.value.trim();
+                if (!newName) return;
+
+                const res = await fetch(`${API}/updatesubject`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: subjectId, new_name: newName })
+                });
+                const data = await res.json();
+                if (data.message !== 'updated!') throw new Error('Subject update failed');
+
+                cancelSubjectEdit(subjectId, newName);
+                showToast('Subject updated');
+            } catch (err) {
+                console.error('saveSubjectEdit failed:', err);
+                showToast('Subject update failed');
+            }
+        }
+
+        // Delete subject → remove one card, update "no subjects" msg if needed
+        async function deleteSubject(id) {
+            try {
+                await fetch(`${API}/delete_subject`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                const card = document.getElementById(`subject-${id}`);
+                if (card) card.remove();
+                removeSavedSubject(activeProjectId, id);
+                showToast('Subject deleted');
+
+                // Sync the inline message — do NOT show the full empty-state splash
+                // because activeProjectId is still set
+                const list = document.getElementById('subjects-list');
+                if (list) syncNoSubjectsMsg(list);
+                applyProjectFilter(activeProjectId);
+            } catch (err) {
+                console.error('deleteSubject failed:', err);
+            }
+        }
+
+        async function deleteProject(projectId) {
+            try {
+                await fetch(`${API}/delete_project`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_id: projectId })
+                });
+
+                const item = document.getElementById(`proj-${projectId}`);
+                if (item) item.remove();
+
+                if (!document.querySelector('.project-item')) {
+                    document.getElementById('projects-list').innerHTML =
+                        '<div class="no-projects">No projects yet. Create one above.</div>';
+                }
+
+                if (activeProjectId === projectId) {
+                    showNoProjectView();
+                }
+
+                const filterMap = getProjectFiltersMap();
+                delete filterMap[String(projectId)];
+                saveProjectFiltersMap(filterMap);
+
+                showToast('Project deleted');
+            } catch (err) {
+                console.error('deleteProject failed:', err);
+            }
+        }
+
+        function startNoteEdit(noteId, subjectId) {
+            const noteEl = document.getElementById(`note-${noteId}`);
+            if (!noteEl || noteEl.classList.contains('editing-note')) return;
+
+            const textEl = noteEl.querySelector('.note-text');
+            if (!textEl) return;
+
+            noteEl.classList.add('editing-note');
+            const currentText = textEl.textContent.trim();
+            textEl.innerHTML = `
+                <input type="text"
+                    class="edit-input note-edit"
+                    value="${escapeHtml(currentText)}"
+                    data-edit-type="note"
+                    data-note-id="${noteId}"
+                    data-subject-id="${subjectId}" />
+            `;
+
+            const actions = noteEl.querySelector('.row-actions');
+            actions.dataset.defaultHtml = actions.innerHTML;
+            actions.innerHTML = `
+                <button type="button" class="btn-icon"
+                    data-action="save-note"
+                    data-note-id="${noteId}"
+                    data-subject-id="${subjectId}">✓</button>
+                <button type="button" class="btn-delete"
+                    data-action="cancel-note-edit"
+                    data-note-id="${noteId}"
+                    data-subject-id="${subjectId}">×</button>
+            `;
+
+            const input = textEl.querySelector('input');
+            input.focus();
+            input.select();
+        }
+
+        function cancelNoteEdit(noteId, text) {
+            const noteEl = document.getElementById(`note-${noteId}`);
+            if (!noteEl) return;
+
+            const textEl = noteEl.querySelector('.note-text');
+            const input = textEl ? textEl.querySelector('input') : null;
+            const restoredText = text ?? (input ? input.defaultValue : '');
+            if (textEl) textEl.textContent = restoredText;
+
+            const actions = noteEl.querySelector('.row-actions');
+            if (actions && actions.dataset.defaultHtml) {
+                actions.innerHTML = actions.dataset.defaultHtml;
+                delete actions.dataset.defaultHtml;
+            }
+            noteEl.classList.remove('editing-note');
+        }
+
+        async function saveNoteEdit(noteId) {
+            try {
+                const noteEl = document.getElementById(`note-${noteId}`);
+                const input = noteEl ? noteEl.querySelector('.note-edit') : null;
+                if (!input) return;
+
+                const stuff = input.value.trim();
+                if (!stuff) return;
+
+                const res = await fetch(`${API}/updatethenote`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ note_id: noteId, stuff })
+                });
+                const data = await res.json();
+                if (data.message !== 'updated!') throw new Error('Note update failed');
+
+                //cancelNoteEdit(noteId, stuff);
+                //const noteEl = document.getElementById(`note-${noteId}`);
+                //if (noteEl) noteEl.dataset.noteText = stuff.toLowerCase();
+                cancelNoteEdit(noteId, stuff);
+                if (noteEl) noteEl.dataset.noteText = stuff.toLowerCase();
+                applyProjectFilter(activeProjectId);
+                showToast('Note updated');
+            } catch (err) {
+                console.error('saveNoteEdit failed:', err);
+                showToast('Note update failed');
+            }
+        }
+
+        // Add note → append one note-item and increment the counter span
+        async function addNote(subjectId) {
+            try {
+                const input = document.getElementById(`note-input-${subjectId}`);
+                const stuff = input.value.trim();
+                if (!stuff) return;
+
+                const res = await fetch(`${API}/addnote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject_id: subjectId, stuff })
+                });
+                const data = await res.json();
+                input.value = '';
+                showToast('Note added');
+
+                // Append only the new note row
+                const notesList = document.getElementById(`notes-list-${subjectId}`);
+                const item = document.createElement('div');
+                item.className = 'note-item';
+                item.id = `note-${data.note_id}`;
+                item.dataset.noteText = data.stuff.toLowerCase();
+                item.dataset.dueDate = '';
+                item.dataset.priority = '';
+                item.innerHTML = `
+                    <div class="note-content">
+                        <span class="note-text">${escapeHtml(data.stuff)}</span>
+                        ${getDueLabelHtml(null, `note-due-label-${data.note_id}`)}
+                    </div>
+                    <div class="row-actions" data-due-actions="note-${data.note_id}" data-priority-actions="note-${data.note_id}">
+                        <button type="button" class="btn-icon"
+                            data-action="edit-note"
+                            data-note-id="${data.note_id}"
+                            data-subject-id="${subjectId}">✎</button>
+                        <button type="button" class="btn-icon"
+                            data-action="edit-due"
+                            data-due-type="note"
+                            data-due-id="${data.note_id}"
+                            data-current-due="">📅</button>
+                        <button type="button" class="btn-icon"
+                            data-action="edit-priority"
+                            data-priority-type="note"
+                            data-priority-id="${data.note_id}">⚑</button>
+                        <button type="button" class="btn-delete"
+                            data-action="delete-note"
+                            data-note-id="${data.note_id}"
+                            data-subject-id="${subjectId}">🗑</button>
+                    </div>
+                `;
+                notesList.appendChild(item);
+
+                // Increment counter in-place — touch only this text node
+                const countEl = document.getElementById(`count-${subjectId}`);
+                const next = parseInt(countEl.textContent) + 1;
+                countEl.textContent = `${next} note${next !== 1 ? 's' : ''}`;
+                applyProjectFilter(activeProjectId);
+            } catch (err) {
+                console.error('addNote failed:', err);
+            }
+        }
+
+        // Delete note → remove one note-item and decrement the counter span
+        async function deleteNote(noteId, subjectId) {
+            try {
+                await fetch(`${API}/delete_note`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ note_id: noteId })
+                });
+
+                const noteEl = document.getElementById(`note-${noteId}`);
+                if (noteEl) noteEl.remove();
+                showToast('Note deleted');
+
+                // Decrement counter in-place
+                const countEl = document.getElementById(`count-${subjectId}`);
+                const next = Math.max(0, parseInt(countEl.textContent) - 1);
+                countEl.textContent = `${next} note${next !== 1 ? 's' : ''}`;
+                applyProjectFilter(activeProjectId);
+            } catch (err) {
+                console.error('deleteNote failed:', err);
+            }
+        }
+
+        // ── Single delegated click handler ─────────────────────────────
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('edit-input')) return;
+            const dueEditorTarget = e.target.closest('.due-editor');
+            const dueEditorAction = dueEditorTarget ? e.target.closest('.due-editor [data-action]') : null;
+            if (dueEditorTarget && !dueEditorAction) return;
+            const priorityEditorTarget = e.target.closest('.priority-editor');
+            const priorityEditorAction = priorityEditorTarget ? e.target.closest('.priority-editor [data-action]') : null;
+            if (priorityEditorTarget && !priorityEditorAction) return;
+
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') {
+                e.stopImmediatePropagation();
+            }
+
+            switch (target.dataset.action) {
+
+                case 'select-project': {
+                    const projectId = parseInt(target.dataset.projectId);
+                    const projectName = target.dataset.projectName;
+                    selectProject(projectId, projectName);
+                    break;
+                }
+
+                case 'delete-project':
+                    deleteProject(parseInt(target.dataset.projectId));
+                    break;
+
+                case 'edit-project':
+                    startProjectEdit(parseInt(target.dataset.projectId));
+                    break;
+
+                case 'save-project':
+                    saveProjectEdit(parseInt(target.dataset.projectId));
+                    break;
+
+                case 'cancel-project-edit':
+                    cancelProjectEdit(parseInt(target.dataset.projectId));
+                    break;
+
+                case 'project-filter': {
+                    const projectItem = target.closest('.project-item');
+                    openProjectFilter(
+                        parseInt(target.dataset.projectId),
+                        projectItem ? projectItem.dataset.projectName : target.dataset.projectName
+                    );
+                    break;
+                }
+
+                case 'edit-due':
+                    startDueEdit(
+                        target.dataset.dueType,
+                        parseInt(target.dataset.dueId),
+                        target.dataset.currentDue || ''
+                    );
+                    break;
+
+                case 'quick-due': {
+                    const editor = target.closest('.due-editor');
+                    const input = editor ? editor.querySelector('.due-input') : null;
+                    if (input) input.value = getQuickDueDate(target.dataset.dueOption);
+                    break;
+                }
+
+                case 'save-due': {
+                    const editor = target.closest('.due-editor');
+                    const input = editor ? editor.querySelector('.due-input') : null;
+                    saveDueDate(target.dataset.dueType, parseInt(target.dataset.dueId), input ? input.value : '');
+                    break;
+                }
+
+                case 'clear-due':
+                    saveDueDate(target.dataset.dueType, parseInt(target.dataset.dueId), '');
+                    break;
+
+                case 'cancel-due':
+                    cancelDueEdit(target.dataset.dueType, parseInt(target.dataset.dueId));
+                    break;
+
+                case 'edit-priority':
+                    startPriorityEdit(
+                        target.dataset.priorityType,
+                        parseInt(target.dataset.priorityId)
+                    );
+                    break;
+
+                case 'save-priority':
+                    savePriority(
+                        target.dataset.priorityType,
+                        parseInt(target.dataset.priorityId),
+                        target.dataset.priorityValue
+                    );
+                    break;
+
+                case 'clear-priority':
+                    savePriority(target.dataset.priorityType, parseInt(target.dataset.priorityId), '');
+                    break;
+
+                case 'cancel-priority':
+                    cancelPriorityEdit(target.dataset.priorityType, parseInt(target.dataset.priorityId));
+                    break;
+
+                case 'filter-quick': {
+                    const type = target.dataset.filterType;
+                    if (type === 'all') {
+                        clearProjectFilter(activeProjectId);
+                    } else if (type === 'high') {
+                        setProjectFilter(activeProjectId, { priority: 'high', due: 'all', dueDate: '', search: '' });
+                    } else {
+                        setProjectFilter(activeProjectId, { priority: 'all', due: type, dueDate: '', search: '' });
+                    }
+                    break;
+                }
+
+                case 'toggle-filter-advanced': {
+                    const current = getProjectFilter(activeProjectId);
+                    setProjectFilter(activeProjectId, { advancedOpen: !current.advancedOpen, panelOpen: true });
+                    break;
+                }
+
+                case 'filter-priority':
+                    setProjectFilter(activeProjectId, { priority: target.dataset.filterPriority, panelOpen: true });
+                    break;
+
+                case 'filter-due':
+                    setProjectFilter(activeProjectId, {
+                        due: target.dataset.filterDue,
+                        dueDate: '',
+                        panelOpen: true
+                    });
+                    break;
+
+                case 'clear-project-filter':
+                    clearProjectFilter(activeProjectId);
+                    break;
+
+                case 'close-project-filter':
+                    setProjectFilter(activeProjectId, { panelOpen: false, advancedOpen: false });
+                    break;
+
+                case 'toggle-subject': {
+                    const id = parseInt(target.dataset.subjectId);
+                    const card = document.getElementById(`subject-${id}`);
+                    if (!card) break;
+                    card.classList.toggle('open');
+                    toggleSavedSubject(activeProjectId, id);
+                    break;
+                }
+
+                case 'delete-subject':
+                    deleteSubject(parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'edit-subject':
+                    startSubjectEdit(parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'save-subject':
+                    saveSubjectEdit(parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'cancel-subject-edit':
+                    cancelSubjectEdit(parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'add-note':
+                    addNote(parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'edit-note':
+                    startNoteEdit(parseInt(target.dataset.noteId), parseInt(target.dataset.subjectId));
+                    break;
+
+                case 'save-note':
+                    saveNoteEdit(parseInt(target.dataset.noteId));
+                    break;
+
+                case 'cancel-note-edit':
+                    cancelNoteEdit(parseInt(target.dataset.noteId));
+                    break;
+
+                case 'delete-note':
+                    deleteNote(parseInt(target.dataset.noteId), parseInt(target.dataset.subjectId));
+                    break;
+            }
+        }, true);
+
+        document.addEventListener('change', function(e) {
+            if (!e.target.classList.contains('due-weekday') && e.target.id !== 'filter-weekday-select') return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') {
+                e.stopImmediatePropagation();
+            }
+
+            if (!e.target.value) return;
+
+            if (e.target.id === 'filter-weekday-select') {
+                setProjectFilter(activeProjectId, {
+                    due: 'date',
+                    dueDate: toDateString(getNextWeekday(parseInt(e.target.value))),
+                    panelOpen: true,
+                    advancedOpen: true
+                });
+                return;
+            }
+
+            const editor = e.target.closest('.due-editor');
+            const input = editor ? editor.querySelector('.due-input') : null;
+            if (input) input.value = toDateString(getNextWeekday(parseInt(e.target.value)));
+        }, true);
+
+        document.addEventListener('input', function(e) {
+            if (e.target.id !== 'filter-search-input') return;
+
+            const current = getProjectFilter(activeProjectId);
+            saveProjectFilter(activeProjectId, {
+                ...current,
+                search: e.target.value,
+                panelOpen: true,
+                advancedOpen: true
+            });
+            applyProjectFilter(activeProjectId);
+        }, true);
+
+        // ── Single delegated keydown handler ───────────────────────────
+        document.addEventListener('keydown', function(e) {
+            if (e.target.classList.contains('due-input')) {
+                if (e.key !== 'Enter' && e.key !== 'Escape') return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                }
+
+                const editor = e.target.closest('.due-editor');
+                if (!editor) return;
+
+                const saveButton = editor.querySelector('[data-action="save-due"]');
+                if (!saveButton) return;
+
+                const type = saveButton.dataset.dueType;
+                const id = parseInt(saveButton.dataset.dueId);
+                if (e.key === 'Enter') saveDueDate(type, id, e.target.value);
+                if (e.key === 'Escape') cancelDueEdit(type, id);
+                return;
+            }
+
+            if (e.target.classList.contains('edit-input')) {
+                if (e.key !== 'Enter' && e.key !== 'Escape') return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                }
+
+                if (e.target.dataset.editType === 'subject') {
+                    const subjectId = parseInt(e.target.dataset.subjectId);
+                    if (e.key === 'Enter') saveSubjectEdit(subjectId);
+                    if (e.key === 'Escape') cancelSubjectEdit(subjectId);
+                    return;
+                }
+
+                if (e.target.dataset.editType === 'project') {
+                    const projectId = parseInt(e.target.dataset.projectId);
+                    if (e.key === 'Enter') saveProjectEdit(projectId);
+                    if (e.key === 'Escape') cancelProjectEdit(projectId);
+                    return;
+                }
+
+                if (e.target.dataset.editType === 'note') {
+                    const noteId = parseInt(e.target.dataset.noteId);
+                    if (e.key === 'Enter') saveNoteEdit(noteId);
+                    if (e.key === 'Escape') cancelNoteEdit(noteId);
+                    return;
+                }
+            }
+
+            if (e.key !== 'Enter') return;
+
+            const id = e.target.id;
+            const action = e.target.dataset.action;
+
+            if (id === 'new-project-input' || id === 'new-subject-input' || action === 'note-input') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                }
+            } else {
+                return;
+            }
+
+            if (id === 'new-project-input') { createProject(); return; }
+            if (id === 'new-subject-input') { addSubject();    return; }
+            if (action === 'note-input')    { addNote(parseInt(e.target.dataset.subjectId)); return; }
+        }, true);
+
+        // Safety net: if Safari or an injected tool turns any interaction into
+        // a form submit, block the navigation so the app stays in-place.
+        document.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }, true);
+
+        // ── Wire static buttons ─────────────────────────────────────────
+        document.getElementById('btn-create-project').addEventListener('click', e => {
+            e.preventDefault();
+            createProject();
+        });
+
+        document.getElementById('btn-add-subject').addEventListener('click', e => {
+            e.preventDefault();
+            addSubject();
+        });
+
+        // ── Init ────────────────────────────────────────────────────────
+        loadProjects();
+    </script>
+
+</body>
+</html>
