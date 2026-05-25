@@ -5,9 +5,14 @@ V5 is the V4 planner rebuilt as a static Supabase app. The UI and behavior stay 
 ## Setup
 
 1. Create a Supabase project.
-2. Open the Supabase SQL editor and run `supabase-schema.sql`.
-3. Copy your project URL and anon public key from Supabase settings.
-4. Put them in `supabase-config.js`.
-5. Deploy the `V5` folder to Vercel as a static site.
+2. In Supabase Auth, enable the Email provider.
+3. In Supabase Auth settings, disable public signups.
+4. In Authentication > Users, create your personal user manually.
+5. Open the Supabase SQL editor and run `supabase-schema.sql`.
+6. Copy your project URL and anon public key from Supabase settings.
+7. Put them in `supabase-config.js`.
+8. Deploy the `V5` folder to Vercel as a static site.
 
-The included schema uses public anon read/write policies because the current V4 app has no login system. That matches the existing behavior, but anyone with the deployed app can read and edit the planner data.
+The app has no public account creation flow. Only users you create in Supabase can sign in. The schema uses row-level security tied to `auth.uid()`, so projects are owned by the signed-in user, and subjects/notes are only accessible through projects owned by that same user.
+
+If you already had public V5 data before adding auth, those existing projects will have a blank `user_id` and will be hidden by RLS until you assign them to your Supabase user id.

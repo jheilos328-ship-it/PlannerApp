@@ -728,6 +728,140 @@
 
         .toast.show { opacity: 1; transform: translateY(0); }
 
+        .auth-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--bg);
+        }
+
+        body.auth-required .auth-screen,
+        body.auth-loading .auth-screen {
+            display: flex;
+        }
+
+        body.auth-required .sidebar,
+        body.auth-required .main,
+        body.auth-loading .sidebar,
+        body.auth-loading .main {
+            visibility: hidden;
+        }
+
+        .auth-panel {
+            width: min(100%, 360px);
+        }
+
+        .auth-panel h1 {
+            font-family: 'Playfair Display', serif;
+            color: var(--accent);
+            font-size: 2rem;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .auth-panel p {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 22px;
+        }
+
+        .auth-panel input {
+            width: 100%;
+            padding: 12px 13px;
+            margin-bottom: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+        }
+
+        .auth-panel input:focus { border-color: var(--accent); }
+
+        .auth-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .auth-actions button,
+        .btn-sign-out {
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            transition: opacity 0.2s, border-color 0.2s;
+        }
+
+        .auth-actions button {
+            flex: 1;
+            padding: 11px 12px;
+            font-size: 0.86rem;
+            font-weight: 500;
+        }
+
+        .btn-auth-primary {
+            background: var(--accent);
+            color: #1a1a1a;
+        }
+
+        .btn-auth-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border) !important;
+        }
+
+        .auth-actions button:hover,
+        .btn-sign-out:hover { opacity: 0.86; }
+
+        .auth-message {
+            min-height: 20px;
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .auth-message.error { color: var(--danger); }
+        .auth-message.success { color: var(--accent); }
+
+        .user-area {
+            margin-top: 14px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .user-email {
+            min-width: 0;
+            color: var(--muted);
+            font-size: 0.75rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-sign-out {
+            flex-shrink: 0;
+            padding: 5px 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.72rem;
+        }
+
+        body.authenticated .user-area {
+            display: flex;
+        }
+
         @media (max-width: 900px) {
             body {
                 flex-direction: column;
@@ -889,12 +1023,29 @@
         }
     </style>
 </head>
-<body>
+<body class="auth-loading">
+
+    <div class="auth-screen" id="auth-screen">
+        <form class="auth-panel" id="auth-form">
+            <h1>Planner</h1>
+            <p>Sign in to open your private planner.</p>
+            <input type="email" id="auth-email" placeholder="Email" autocomplete="email" required />
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" required />
+            <div class="auth-actions">
+                <button type="submit" class="btn-auth-primary" id="btn-sign-in">Sign In</button>
+            </div>
+            <div class="auth-message" id="auth-message">Checking session...</div>
+        </form>
+    </div>
 
     <aside class="sidebar">
         <div class="sidebar-header">
             <h1>Planner</h1>
             <p>Your projects</p>
+            <div class="user-area">
+                <span class="user-email" id="user-email"></span>
+                <button type="button" class="btn-sign-out" id="btn-sign-out">Sign Out</button>
+            </div>
         </div>
         <div class="new-project-area">
             <input type="text" id="new-project-input" placeholder="New project..." />
@@ -934,7 +1085,11 @@
     <script>
         const SUPABASE_URL = window.SUPABASE_CONFIG?.url || 'https://YOUR-PROJECT.supabase.co';
         const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || 'YOUR-SUPABASE-ANON-KEY';
-        const supabaseDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseDb = window.supabase?.createClient
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            : null;
+        let currentUser = null;
+        let plannerBooted = false;
 
         const API = '';
         const PLANNER_ENDPOINTS = new Set([
@@ -981,6 +1136,9 @@
         }
 
         function ensureSupabaseReady() {
+            if (!supabaseDb) {
+                throw new Error('Supabase client did not load. Check your internet connection or the CDN script.');
+            }
             if (SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_ANON_KEY.includes('YOUR-SUPABASE')) {
                 throw new Error('Add your Supabase URL and anon key near the top of this file.');
             }
@@ -1029,14 +1187,115 @@
             if (error) throw error;
         }
 
+        function requireSignedInUser() {
+            if (!currentUser) throw new Error('Sign in before using the planner.');
+            return currentUser;
+        }
+
+        function setAuthMessage(message, isError = false) {
+            const msg = document.getElementById('auth-message');
+            if (!msg) return;
+            msg.textContent = message;
+            msg.classList.toggle('error', isError);
+            msg.classList.toggle('success', !isError && Boolean(message));
+        }
+
+        function getAuthCredentials() {
+            const form = document.getElementById('auth-form');
+            if (form && !form.reportValidity()) return null;
+
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (password.length < 6) {
+                setAuthMessage('Password must be at least 6 characters.', true);
+                return null;
+            }
+
+            return { email, password };
+        }
+
+        function resetPlannerState() {
+            activeProjectId = null;
+            clearActiveProject();
+            document.getElementById('projects-list').innerHTML =
+                '<div class="no-projects">Sign in to load your projects.</div>';
+            showNoProjectView();
+        }
+
+        function setAuthState(user) {
+            currentUser = user;
+            document.body.classList.remove('auth-loading', 'auth-required', 'authenticated');
+
+            if (!user) {
+                plannerBooted = false;
+                document.body.classList.add('auth-required');
+                document.getElementById('user-email').textContent = '';
+                resetPlannerState();
+                setAuthMessage('Sign in to continue.');
+                return;
+            }
+
+            document.body.classList.add('authenticated');
+            document.getElementById('user-email').textContent = user.email || '';
+            setAuthMessage('');
+            if (!plannerBooted) {
+                plannerBooted = true;
+                loadProjects();
+            }
+        }
+
+        async function signInWithPassword() {
+            try {
+                ensureSupabaseReady();
+                const credentials = getAuthCredentials();
+                if (!credentials) return;
+                setAuthMessage('Signing in...');
+                const { error } = await supabaseDb.auth.signInWithPassword(credentials);
+                throwIfSupabaseError(error);
+            } catch (err) {
+                console.error('signInWithPassword failed:', err);
+                setAuthMessage('Sign in failed. Check the email and password.', true);
+            }
+        }
+
+        async function signOut() {
+            try {
+                const { error } = await supabaseDb.auth.signOut();
+                throwIfSupabaseError(error);
+            } catch (err) {
+                console.error('signOut failed:', err);
+                showToast('Sign out failed');
+            }
+        }
+
+        async function initAuth() {
+            try {
+                ensureSupabaseReady();
+                const { data, error } = await supabaseDb.auth.getSession();
+                throwIfSupabaseError(error);
+                setAuthState(data.session ? data.session.user : null);
+                supabaseDb.auth.onAuthStateChange((_event, session) => {
+                    setAuthState(session ? session.user : null);
+                });
+            } catch (err) {
+                console.error('initAuth failed:', err);
+                document.body.classList.remove('auth-loading');
+                document.body.classList.add('auth-required');
+                setAuthMessage(err.message || 'Supabase auth is not configured.', true);
+            }
+        }
+
         async function handlePlannerRequest(path, options = {}) {
             ensureSupabaseReady();
+            const user = requireSignedInUser();
             const body = await getRequestJson(options);
 
             if (path === '/showallprojects') {
                 const { data, error } = await supabaseDb
                     .from('projects')
                     .select('id, name, due_date, priority')
+                    .eq('user_id', user.id)
                     .order('id', { ascending: true });
                 throwIfSupabaseError(error);
                 return jsonResponse((data || []).map(projectFromRow));
@@ -1045,7 +1304,7 @@
             if (path === '/createnewproject') {
                 const { data, error } = await supabaseDb
                     .from('projects')
-                    .insert({ name: body.name })
+                    .insert({ name: body.name, user_id: user.id })
                     .select('id, name')
                     .single();
                 throwIfSupabaseError(error);
@@ -3047,6 +3306,9 @@
         document.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
+            if (e.target && e.target.id === 'auth-form') {
+                signInWithPassword();
+            }
         }, true);
 
         // ── Wire static buttons ─────────────────────────────────────────
@@ -3060,8 +3322,13 @@
             addSubject();
         });
 
+        document.getElementById('btn-sign-out').addEventListener('click', e => {
+            e.preventDefault();
+            signOut();
+        });
+
         // ── Init ────────────────────────────────────────────────────────
-        loadProjects();
+        initAuth();
     </script>
 
 </body>
