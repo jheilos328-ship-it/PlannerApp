@@ -1,16 +1,11 @@
-Following the majority of my self-taught backend journey, I built a simple project that I could use personally. I built a planner app, nothing super special, but with the goal to demonstrate my ability to draft, plan, and create a finished project on my own terms.
-
-For the sake of clarification, I typed the python code and SQL database code myself, and drafted each function myself. I did not use my time to learn frontend code, so I utilized AI to create frontend that can go well with my existing backend code. Through this process, I learned that it is best to draft and create the backend code first, then layer the frontend code on top of it to my liking. 
-
-Development Process
-Through multiple drafts, I found solutions to problems in pre-existing versions and solved them in following versions. By version 4 and 5, I had to ditch the backend because deploying a project without free services like Supabase(an online backend-as-a-service platform that can hold my data) would cost me money I was not willing to spend. However, I added several features such as due dates with color coded labels, priority labels, and advanced filters. Although these later versions explored different approaches to the project, the same principle applies for all versions. The only adjustment I had to make was to translate my pre-existing backend code into a useable Supabase backend that I could deploy for free with no headaches.
-
---------------------
 Project Overview
-Following much of my self-taught backend development journey, I built a simple project that I could use personally. I decided to build a personal planner app, nothing too special, but with the goal to demonstrate my ability to draft, plan, and create a finished project on my own terms. After trying other planners that did't quite work for me, I decided to build one around my own needs. It has since become a project that I am proud of because it helps me keep track of daily tasks and school deadlines, and is something that I still use today and will continue using in the future.
+Following much of my self-taught backend development journey, I built a simple project that I could use personally. I decided to build a personal planner app, nothing too special, but with the goal of demonstrating my ability to draft, plan, and create a finished project on my own terms. After trying other planners that didn't quite work for me, I decided to build one around my own needs. It has since become a project that I am proud of because it helps me keep track of daily tasks and school deadlines, and is something that I still use today and will continue using in the future.
 
 Development Process
+Through the process of going through multiple revisions across all versions of my personal project, I identified fixable solutions to make each version better than the last. Versions 1 and 2 had the basic necessities needed for a competent planner app, but by version 4 and 5 I had added multiple features that made the application much more usable. I added priority labels, color-coded due dates, and advanced filters on top of the original format I designed. Through these processes, I learned that the best strategy to building projects as such is to develop the backend logic and database before wrapping the frontend around it to my liking. 
 
+Important Clarifications
+During the development of earlier versions, I intended to use this project as a proof of concept for my ability to draft and write python and SQL code independently. I did so successfully with the original backend. Since I had not taught myself enough frontend to be sufficient, I created an AI-assisted frontend that works well with the way my backend was developed. However, in order to deploy the application for actual usage without paying for hosting, I had to move away from my original implementations and adapt my application to use Supabase as a free database and hosting service. This way, I could deploy my application with the same functions and capabilities, just without extra headaches from fees.
 
 Tech Stack
 Original Version-
